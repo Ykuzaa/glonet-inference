@@ -20,6 +20,5 @@ COPY ./get_inits.py .
 COPY ./s3_upload.py .
 COPY ./run_glonet_inference.py .
 
-WORKDIR /app
 
 CMD [ "python", "run_glonet_inference.py" ]
