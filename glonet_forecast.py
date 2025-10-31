@@ -341,6 +341,7 @@ def create_forecast(
     initial_file_2_url: str,
     initial_file_3_url: str,
 ) -> xr.Dataset:
+    from s3_upload import get_s3_endpoint_url_with_protocol
     forecast_directory_url = forecast_netcdf_file_url.rpartition("/")[0]
     day_string = forecast_directory_url.rpartition("/")[2]
     date = datetime.strptime(day_string, "%Y-%m-%d").date()
@@ -352,26 +353,29 @@ def create_forecast(
     )
 
     print("Configuration du client S3 pour la lecture...")
-    #Connecte au client S3
-    s3_endpoint_url = os.environ.get("S3_ENDPOINT")
-    if s3_endpoint_url and not s3_endpoint_url.startswith("https://"):
-        s3_endpoint_url = "https://" + s3_endpoint_url
+    s3_url_with_protocol = get_s3_endpoint_url_with_protocol()
+    
     s3 = s3fs.S3FileSystem(
         client_kwargs={
-            'endpoint_url': os.environ["S3_ENDPOINT"]
+            'endpoint_url': s3_url_with_protocol
         },
         key=os.environ["AWS_ACCESS_KEY_ID"],
         secret=os.environ["AWS_SECRET_ACCESS_KEY"],
         token=os.environ["AWS_SESSION_TOKEN"]
     )
-    #Convertit URLs HTTPS en chemin S3
-    endpoint_url_http = os.environ["S3_ENDPOINT"]
-    s3_path1 = initial_file_1_url.replace(endpoint_url_http, "s3://")
-    s3_path2 = initial_file_2_url.replace(endpoint_url_http, "s3://")
-    s3_path3 = initial_file_3_url.replace(endpoint_url_http, "s3://")
+    s3_endpoint_url_base = os.environ.get("S3_ENDPOINT", "https://minio.dive.edito.eu").rstrip('/') + '/'
 
+    def get_s3_path(url):
+        if url.startswith(s3_endpoint_url_base):
+            return url[len(s3_endpoint_url_base):].lstrip('/')
+        else:
+            parts = url.replace("https://", "", 1).split('/', 1)
+            return parts[1] if len(parts) > 1 else ""
+
+    s3_path1 = get_s3_path(initial_file_1_url)
+    s3_path2 = get_s3_path(initial_file_2_url)
+    s3_path3 = get_s3_path(initial_file_3_url)
   
-    #Lire les 3 fichiers init depuis S3  
     print(f"Ouverture authentifiée de {s3_path1}...")
     with s3.open(s3_path1, 'rb') as f1:
         rdata1 = xr.open_dataset(f1, engine="h5netcdf").load()
@@ -395,7 +399,6 @@ def create_forecast(
     del rdata3
     gc.collect()
     
-    #Fusionner les 3 resultats
     combined1 = xr.concat(ds1, dim="time")
     combined2 = xr.concat(ds2, dim="time")
     combined3 = xr.concat(ds3, dim="time")
@@ -403,27 +406,21 @@ def create_forecast(
     gc.collect()
 
     print("Extraction de la variable 2D 'zos'...")
-    #Mets zos (qui est 2D) de côté (time, lat, lon)
     zos_data = combined1["zos"]
     
-    #Supprime zos de combined1 pour que la fusion 3D fonctionne
     combined1 = combined1.drop_vars("zos")
 
     print("Fusion des variables 3D le long de 'depth'...")
-    #Fusionne toutes les variables 3D (thetao, so, uo, vo) sur depth
     combined4 = xr.concat([combined1, combined2, combined3], dim="depth",data_vars="minimal")
     
     print("Ré-ajout de la variable 'zos'...")
-    #Ré-ajoute la variable zos 2D au dataset final
     combined4["zos"] = zos_data
 
     combined4 = add_metadata(combined4, date)
     os.makedirs(end_datetime, exist_ok=True)
 
-    # Free memory
     del combined1, combined2, combined3
     gc.collect()
 
     return combined4
-
 

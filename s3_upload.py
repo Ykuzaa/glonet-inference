@@ -2,24 +2,32 @@ import boto3
 import os
 
 
-def get_s3_client():
-    # Récupérer la variable
+def get_s3_endpoint_url_with_protocol():
     s3_endpoint_url = os.environ.get("S3_ENDPOINT")
     
-    # Vérifier et corriger si besoin
-    if s3_endpoint_url.startswith("https://"):
-        s3_endpoint_url = s3_endpoint_url[8:]
-    elif s3_endpoint_url.startswith("http://"):
-        s3_endpoint_url = s3_endpoint_url[7:]
-    s3_endpoint_url = f"https://{s3_endpoint_url}"
+    # Vérifie si la variable est définie
+    if not s3_endpoint_url:
+        raise ValueError("La variable d'environnement S3_ENDPOINT n'est pas définie.")
+
+    # Nettoie d'abord les préfixes HTTP/HTTPS (juste pour être sûr)
+    s3_endpoint_url = s3_endpoint_url.replace("https://", "").replace("http://", "").rstrip('/')
+    
+    # AJOUTE TOUJOURS LE PROTOCOLE HTTPS
+    s3_endpoint_url_final = f"https://{s3_endpoint_url}"
+    
+    return s3_endpoint_url_final
+
+def get_s3_client():
+    # Récupère l'URL corrigée avec https://
+    s3_endpoint_url_final = get_s3_endpoint_url_with_protocol()
+    
     return boto3.client(
         "s3",
-        endpoint_url=s3_endpoint_url,  # Utiliser la variable corrigée
+        endpoint_url=s3_endpoint_url_final,  # Utiliser la variable corrigée
         aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         aws_session_token=os.environ["AWS_SESSION_TOKEN"],
     )
-
 
 def list_objects(bucket_name: str, prefix_key: str) -> list[dict[str, str]]:
     try:

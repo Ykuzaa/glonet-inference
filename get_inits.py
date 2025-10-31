@@ -1,17 +1,16 @@
 from datetime import datetime, date
 from xarray import Dataset, concat, merge, open_dataset
 from datetime import timedelta
-import copernicusmarine     #Télécharger les donnees Copernicus
+import copernicusmarine
 import numpy
 import gc
 import os
-from s3_upload import save_file_to_s3, get_s3_client
-from xesmf import Regridder  #Changer la résolution de la grille
+from s3_upload import save_file_to_s3, get_s3_client, get_s3_endpoint_url_with_protocol
+from xesmf import Regridder
 from s3_upload import save_bytes_to_s3
 from model import synchronize_model_locally
 
 
-#Fct qui telecharge les donnees oceanographiques depuis Copernicus Marine pour une profondeur donnee et une date donnee puis les remet sur une grille uniforme (regridding)et retourne le dataset et un flag indiquant si c'est la surface.
 def get_data(date, depth, fn):
     start_datetime = str(date - timedelta(days=1))
     end_datetime = str(date)
@@ -56,7 +55,6 @@ def get_data(date, depth, fn):
     print("merging..")
     ds = merge(ds)
     print(ds)
-    # Copernicus donne 0.083° resolution, on veut 0.25° (1/4 degre)
     ds_out = Dataset(
         {
             "lat": (
@@ -73,7 +71,6 @@ def get_data(date, depth, fn):
     )
 
     print("loading regridder")
-    # Charger les poids pre-calcules pour interpolation bilineaire
     regridder = Regridder(
         data, ds_out, "bilinear", weights=fn, reuse_weights=True
     )
@@ -85,7 +82,6 @@ def get_data(date, depth, fn):
     gc.collect()
     return ds_out, is_surface
 
-#Donne données initiales pour p1
 def glo_in1(model_dir: str, date):
     inp, is_surface = get_data(date, 0.49402499198913574, f"{model_dir}/xe_weights14/L0.nc")
     print(inp)
@@ -158,32 +154,26 @@ def create_depth_data(date: date, glo_in, model_dir: str):
     dd, is_surface = glo_in(model_dir, date)
     return create_data(dd, is_surface)
 
-#Appelle glo_in, convertit en bytes et sauvegarde sur S3 
 def create_data_if_needed(
     bucket_name: str,
-    forecast_directory_url: str, # Attend une URL HTTPS comme https://minio.../bucket/folder/DATE
+    forecast_directory_url: str,
     date: date,
     in_layer: str,
     glo_in,
 ) -> str:
-    # --- DÉFINIR LES CHEMINS ET URLS EN PREMIER ---
-    # Extrait le chemin de base relatif au bucket
-    # ex: glonet-inference/2025-10-27
+    from s3_upload import get_s3_endpoint_url_with_protocol
+    
     base_s3_key_path = forecast_directory_url.partition(bucket_name + '/')[2]
     base_s3_key_path = base_s3_key_path.lstrip('/')
 
-    # Construit la clé S3 spécifique pour ce fichier initial
-    # ex: glonet-inference/2025-10-27/inits/in1.nc
     file_key = f"{base_s3_key_path}/inits/{in_layer}.nc"
     file_key = file_key.lstrip('/')
+    
+    s3_endpoint_url_base = get_s3_endpoint_url_with_protocol().rstrip('/')
 
-    # Construit l'URL HTTPS complète (pour la valeur de retour)
-    s3_endpoint_url_base = os.environ.get("S3_ENDPOINT", "https://minio.dive.edito.eu").rstrip('/')
-    init_netcdf_file_url = f"{s3_endpoint_url_base}/{bucket_name}/{file_key}" # <- DÉFINITION ICI
-    s3_full_path = f"s3://{bucket_name}/{file_key}" # Pour les logs
-    # --- FIN DÉFINITION ---
+    init_netcdf_file_url = f"{s3_endpoint_url_base}/{bucket_name}/{file_key}"
+    s3_full_path = f"s3://{bucket_name}/{file_key}"
 
-    # --- Vérifie si le fichier existe sur S3 ---
     file_exists = False
     try:
         print(f"Vérification existence : {s3_full_path}...")
@@ -192,7 +182,6 @@ def create_data_if_needed(
         print(f"Fichier initial existe déjà : {s3_full_path}")
         file_exists = True
     except Exception as check_exception:
-        # Gère spécifiquement l'erreur "fichier non trouvé"
         is_not_found = False
         if hasattr(check_exception, 'response') and 'Error' in check_exception.response:
             if check_exception.response['Error']['Code'] == '404':
@@ -202,14 +191,10 @@ def create_data_if_needed(
              print(f"Fichier initial n'existe pas : {s3_full_path}. Génération...")
              file_exists = False
         else:
-             # Si autre erreur (ex: permission), on arrête
              print(f"Erreur lors de la vérification S3 ({s3_full_path}): {check_exception}")
              raise check_exception
-    # --- Fin Vérification ---
 
-    # --- Génère le fichier si nécessaire ---
     if not file_exists:
-        # ... (le reste du code pour générer, écrire en temp, uploader) ...
         local_dir = "/tmp/glonet"
         synchronize_model_locally(local_dir)
         dataset = create_depth_data(date, glo_in, model_dir=local_dir)
@@ -229,9 +214,7 @@ def create_data_if_needed(
             if os.path.exists(temp_file_path):
                 print(f"Suppression {temp_file_path}")
                 os.remove(temp_file_path)
-    # --- Fin Génération ---
 
-    # Retourne l'URL HTTPS comme attendu
     return init_netcdf_file_url
 
 

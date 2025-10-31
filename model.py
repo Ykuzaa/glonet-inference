@@ -1,48 +1,38 @@
-# --- Fichier: model.py ---
-
 import os
 from pathlib import Path
-import boto3
-# Pas besoin de botocore ou Config pour l'accès authentifié
+import requests
 
-# --- Configuration ---
-# Dossier dans le bucket personnel contenant les modèles
-MODELS_PREFIX_IN_YOUR_BUCKET = "glonet-models/"
-# --------------------
+MODEL_SOURCE_BUCKET = "project-glonet"
+MODEL_PREFIX = "public/glonet_1_4_model/20241112/model/"
 
 def synchronize_model_locally(local_dir: str):
-    """Point d'entrée: synchronise les modèles du bucket perso vers local_dir."""
-    # Récupère le nom du bucket depuis l'environnement
-    user_s3_bucket = os.environ.get("BUCKET_NAME")
-    if not user_s3_bucket:
-        print("Erreur : BUCKET_NAME manquant.")
-        raise ValueError("BUCKET_NAME manquant dans l'environnement")
-
-    print(f"Synchro depuis : s3://{user_s3_bucket}/{MODELS_PREFIX_IN_YOUR_BUCKET}")
-    # Appelle la fonction de synchronisation effective
+    model_s3_bucket = MODEL_SOURCE_BUCKET 
+    model_remote_prefix = MODEL_PREFIX
+    
+    print(f"Synchro depuis : s3://{model_s3_bucket}/{model_remote_prefix}")
+    
     sync_s3_to_local(
-        user_s3_bucket, MODELS_PREFIX_IN_YOUR_BUCKET, local_dir
+        model_s3_bucket, 
+        model_remote_prefix,
+        local_dir
     )
 
 def sync_s3_to_local(bucket_name, remote_prefix, local_dir):
-    """Télécharge les fichiers depuis S3 (authentifié) si non présents localement."""
-    # Assure que le dossier local existe
     local_dir = Path(local_dir)
     local_dir.mkdir(parents=True, exist_ok=True)
 
-    # Crée un client S3 authentifié
     try:
-        # Importe la fonction helper pour obtenir le client
-        from s3_upload import get_s3_client
-        s3_client = get_s3_client()
-        print("Client S3 authentifié créé.")
+        s3_endpoint_url = os.environ.get("S3_ENDPOINT")
+        
+        s3_endpoint_clean = s3_endpoint_url.replace('https://', '').replace('http://', '').rstrip('/')
+        s3_base_url = f"https://{s3_endpoint_clean}"
+        print("Téléchargement via requêtes HTTP directes.")
     except Exception as e:
-        print(f"Erreur création client S3 : {e}")
+        print(f"Erreur de configuration de l'endpoint S3 : {e}")
         raise
 
-    print(f"Vérification/Téléchargement : s3://{bucket_name}/{remote_prefix} -> {local_dir}...")
+    print(f"Vérification/Téléchargement : {s3_base_url}/{bucket_name}/{remote_prefix} -> {local_dir}...")
 
-    # Liste des fichiers modèles requis
     files_to_download = [
         "L0/zos_mean.npy", "L0/zos_std.npy", "L0/thetao_mean.npy", "L0/thetao_std.npy", "L0/so_mean.npy", "L0/so_std.npy", "L0/uo_mean.npy", "L0/uo_std.npy", "L0/vo_mean.npy", "L0/vo_std.npy",
         "L50/thetao_mean.npy", "L50/thetao_std.npy", "L50/so_mean.npy", "L50/so_std.npy", "L50/uo_mean.npy", "L50/uo_std.npy", "L50/vo_mean.npy", "L50/vo_std.npy",
@@ -74,34 +64,28 @@ def sync_s3_to_local(bucket_name, remote_prefix, local_dir):
         "xe_weights14/L3597.nc", "xe_weights14/L3992.nc", "xe_weights14/L4405.nc", "xe_weights14/L4833.nc", "xe_weights14/L5274.nc",
     ]
 
-    # Boucle sur chaque fichier à télécharger
     for file_name in files_to_download:
-        # Construit le chemin local complet
         local_file_path = local_dir / file_name
-        # Crée le dossier parent local si nécessaire
         local_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Construit la clé S3 (chemin dans le bucket)
         object_key = f"{remote_prefix}{file_name}"
 
-        # Ne télécharge que si le fichier n'existe pas localement
         if not local_file_path.exists():
             try:
-                print(f"Téléchargement: s3://{bucket_name}/{object_key} -> {local_file_path}...")
-                # Appel Boto3 pour télécharger
-                s3_client.download_file(
-                    bucket_name,
-                    object_key,
-                    str(local_file_path)
-                )
-                print(f"Téléchargé: {file_name}")
-            # Gestion des erreurs de téléchargement
-            except Exception as e:
-                print(f"ERREUR : Téléchargement échoué pour {file_name} depuis s3://{bucket_name}/{object_key}")
-                print(f"Vérifier si le fichier existe et les permissions.")
-                print(f"Erreur Boto3 : {e}")
-                # Arrête le script si un modèle manque
-                raise SystemExit(f"Modèle manquant : {file_name}")
+                http_url = f"{s3_base_url}/{bucket_name}/{object_key}"
+                print(f"Téléchargement: {http_url} -> {local_file_path}...") 
+                
+                response = requests.get(http_url, stream=True)
+                response.raise_for_status()
 
-    # Message de fin
+                with open(local_file_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                print(f"Téléchargé: {file_name}")
+            except Exception as e:
+                print(f"ERREUR : Téléchargement échoué pour {file_name} depuis {http_url}")
+                print(f"Erreur HTTP/Network : {e}")
+                raise 
+
     print(f"Synchronisation terminée dans {local_dir}")

@@ -81,9 +81,11 @@ def main():
     # Générer les données initiales: depuis Copernicus Marine vers S3 (dans bucket)
     print("--- Donnees initiales ---")
     
-    bucket_name = S3_OUTPUT_FOLDER.split('/')[0]
-    folder_path = S3_OUTPUT_FOLDER.split('/')[1] if len(S3_OUTPUT_FOLDER.split('/'))>1 else ""
-    
+    # Sépare la chaîne en 2 parties : [bucket_name, chemin_restant]
+    s3_path_parts = S3_OUTPUT_FOLDER.split('/', 1) 
+    bucket_name = s3_path_parts[0]
+    folder_path = s3_path_parts[1] if len(s3_path_parts) > 1 else ""
+        
     in1_url, in2_url, in3_url = generate_initial_data(
         bucket_name=bucket_name,
         forecast_netcdf_file_url=forecast_netcdf_url
