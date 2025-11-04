@@ -186,6 +186,9 @@ def create_data_if_needed(
         if hasattr(check_exception, 'response') and 'Error' in check_exception.response:
             if check_exception.response['Error']['Code'] == '404':
                 is_not_found = True
+            if check_exception.response['Error']['Code'] == '403':
+                print("AVERTISSEMENT: 403 Forbidden reçu. Traitement comme un fichier inexistant (peut nécessiter une correction de permission IAM).")
+                is_not_found = True
 
         if is_not_found:
              print(f"Fichier initial n'existe pas : {s3_full_path}. Génération...")
