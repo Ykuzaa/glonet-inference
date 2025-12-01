@@ -31,7 +31,7 @@ def make_nc(vars, denormalizer, ti, lead, model_dir: str):
         str(ti + timedelta(days=2 * lead)),
         str(ti + timedelta(days=2 * lead + 2)),
         dtype="datetime64[D]",
-    )
+    ).astype("datetime64[ns]")
     d = d.assign_coords(time=time)
     return xr.decode_cf(d)
 
@@ -50,7 +50,7 @@ def make_nc2(vars, denormalizer, ti, lead, model_dir: str):
         str(ti + timedelta(days=2 * lead)),
         str(ti + timedelta(days=2 * lead + 2)),
         dtype="datetime64[D]",
-    )
+    ).astype("datetime64[ns]")
     d = d.assign_coords(time=time)
     return xr.decode_cf(d)
 
@@ -69,7 +69,7 @@ def make_nc3(vars, denormalizer, ti, lead, model_dir: str):
         str(ti + timedelta(days=2 * lead)),
         str(ti + timedelta(days=2 * lead + 2)),
         dtype="datetime64[D]",
-    )
+    ).astype("datetime64[ns]")
     d = d.assign_coords(time=time)
     return xr.decode_cf(d)
 

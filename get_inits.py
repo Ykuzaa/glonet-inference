@@ -125,7 +125,7 @@ def glo_in3(model_dir: str, date):
     inp.append(get_data(date, 3597, f"{model_dir}/xe_weights14/L3597.nc")[0])
     inp.append(get_data(date, 3992, f"{model_dir}/xe_weights14/L3992.nc")[0])
     inp.append(get_data(date, 4405, f"{model_dir}/xe_weights14/L4405.nc")[0])
-    inp.append(get_data(date, 4405, f"{model_dir}/xe_weights14/L4833.nc")[0])
+    inp.append(get_data(date, 4833, f"{model_dir}/xe_weights14/L4833.nc")[0])
     inp.append(get_data(date, 5274, f"{model_dir}/xe_weights14/L5274.nc")[0])
     inp = concat(inp, dim="depth")
     return inp, False
