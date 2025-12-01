@@ -1,9 +1,20 @@
+"""
+Normalization utilities for GLONET ocean forecasting model.
+
+This module provides functions to load and apply normalization statistics
+(mean and standard deviation) for different depth levels of oceanographic variables.
+These statistics are used to normalize input data before model inference and
+denormalize predictions after inference.
+
+"""
 from torchvision import transforms
 import numpy as np
 
 
+# LEVEL 1 (Surface): L0
 def get_normalizer1(model_dir: str):
     level = "L0"
+
     gmean = np.concatenate(
         [
             [np.load(model_dir + "/" + level + "/zos_mean.npy")],
@@ -25,12 +36,12 @@ def get_normalizer1(model_dir: str):
     )
 
     transform = transforms.Normalize(mean=gmean, std=gstd)
-
     return transform
 
 
 def get_denormalizer1(model_dir: str):
     level = "L0"
+
     gmean = np.concatenate(
         [
             [np.load(model_dir + "/" + level + "/zos_mean.npy")],
@@ -52,17 +63,15 @@ def get_denormalizer1(model_dir: str):
     )
 
     denormalizer = transforms.Normalize(
-        mean=[-m / s for m, s in zip(gmean, gstd)], std=[1 / s for s in gstd]
+        mean=[-m / s for m, s in zip(gmean, gstd)],
+        std=[1 / s for s in gstd],
     )
     return denormalizer
 
 
-####################################################################3
-################################################################################
-
-
+# LEVEL 2 (Intermediate depths):
 def get_normalizer2(model_dir: str):
-    levels = {
+    levels = [
         "L50",
         "L100",
         "L150",
@@ -73,7 +82,8 @@ def get_normalizer2(model_dir: str):
         "L540",
         "L640",
         "L763",
-    }
+    ]
+
     mean_thetao = []
     mean_so = []
     mean_uo = []
@@ -82,17 +92,14 @@ def get_normalizer2(model_dir: str):
     std_so = []
     std_uo = []
     std_vo = []
-    for level in sorted(levels):
-        mean_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_mean.npy")[0]
-        )
+
+    for level in levels:
+        mean_thetao.append(np.load(model_dir + "/" + level + "/thetao_mean.npy")[0])
         mean_so.append(np.load(model_dir + "/" + level + "/so_mean.npy")[0])
         mean_uo.append(np.load(model_dir + "/" + level + "/uo_mean.npy")[0])
         mean_vo.append(np.load(model_dir + "/" + level + "/vo_mean.npy")[0])
 
-        std_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_std.npy")[0]
-        )
+        std_thetao.append(np.load(model_dir + "/" + level + "/thetao_std.npy")[0])
         std_so.append(np.load(model_dir + "/" + level + "/so_std.npy")[0])
         std_uo.append(np.load(model_dir + "/" + level + "/uo_std.npy")[0])
         std_vo.append(np.load(model_dir + "/" + level + "/vo_std.npy")[0])
@@ -101,12 +108,11 @@ def get_normalizer2(model_dir: str):
     gstd = np.concatenate([std_thetao, std_so, std_uo, std_vo])
 
     transform = transforms.Normalize(mean=gmean, std=gstd)
-
     return transform
 
 
 def get_denormalizer2(model_dir: str):
-    levels = {
+    levels = [
         "L50",
         "L100",
         "L150",
@@ -117,7 +123,8 @@ def get_denormalizer2(model_dir: str):
         "L540",
         "L640",
         "L763",
-    }
+    ]
+
     mean_thetao = []
     mean_so = []
     mean_uo = []
@@ -126,17 +133,14 @@ def get_denormalizer2(model_dir: str):
     std_so = []
     std_uo = []
     std_vo = []
-    for level in sorted(levels):
-        mean_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_mean.npy")[0]
-        )
+
+    for level in levels:
+        mean_thetao.append(np.load(model_dir + "/" + level + "/thetao_mean.npy")[0])
         mean_so.append(np.load(model_dir + "/" + level + "/so_mean.npy")[0])
         mean_uo.append(np.load(model_dir + "/" + level + "/uo_mean.npy")[0])
         mean_vo.append(np.load(model_dir + "/" + level + "/vo_mean.npy")[0])
 
-        std_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_std.npy")[0]
-        )
+        std_thetao.append(np.load(model_dir + "/" + level + "/thetao_std.npy")[0])
         std_so.append(np.load(model_dir + "/" + level + "/so_std.npy")[0])
         std_uo.append(np.load(model_dir + "/" + level + "/uo_std.npy")[0])
         std_vo.append(np.load(model_dir + "/" + level + "/vo_std.npy")[0])
@@ -145,14 +149,15 @@ def get_denormalizer2(model_dir: str):
     gstd = np.concatenate([std_thetao, std_so, std_uo, std_vo])
 
     denormalizer = transforms.Normalize(
-        mean=[-m / s for m, s in zip(gmean, gstd)], std=[1 / s for s in gstd]
+        mean=[-m / s for m, s in zip(gmean, gstd)],
+        std=[1 / s for s in gstd],
     )
     return denormalizer
 
 
-####################################################################3
+# LEVEL 3 (Deep ocean):
 def get_normalizer3(model_dir: str):
-    levels = {
+    levels = [
         "L902",
         "L1245",
         "L1684",
@@ -163,7 +168,8 @@ def get_normalizer3(model_dir: str):
         "L4405",
         "L4833",
         "L5274",
-    }
+    ]
+
     mean_thetao = []
     mean_so = []
     mean_uo = []
@@ -172,17 +178,14 @@ def get_normalizer3(model_dir: str):
     std_so = []
     std_uo = []
     std_vo = []
-    for level in sorted(levels):
-        mean_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_mean.npy")[0]
-        )
+
+    for level in levels:
+        mean_thetao.append(np.load(model_dir + "/" + level + "/thetao_mean.npy")[0])
         mean_so.append(np.load(model_dir + "/" + level + "/so_mean.npy")[0])
         mean_uo.append(np.load(model_dir + "/" + level + "/uo_mean.npy")[0])
         mean_vo.append(np.load(model_dir + "/" + level + "/vo_mean.npy")[0])
 
-        std_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_std.npy")[0]
-        )
+        std_thetao.append(np.load(model_dir + "/" + level + "/thetao_std.npy")[0])
         std_so.append(np.load(model_dir + "/" + level + "/so_std.npy")[0])
         std_uo.append(np.load(model_dir + "/" + level + "/uo_std.npy")[0])
         std_vo.append(np.load(model_dir + "/" + level + "/vo_std.npy")[0])
@@ -191,12 +194,11 @@ def get_normalizer3(model_dir: str):
     gstd = np.concatenate([std_thetao, std_so, std_uo, std_vo])
 
     transform = transforms.Normalize(mean=gmean, std=gstd)
-
     return transform
 
 
 def get_denormalizer3(model_dir: str):
-    levels = {
+    levels = [
         "L902",
         "L1245",
         "L1684",
@@ -207,7 +209,8 @@ def get_denormalizer3(model_dir: str):
         "L4405",
         "L4833",
         "L5274",
-    }
+    ]
+
     mean_thetao = []
     mean_so = []
     mean_uo = []
@@ -216,17 +219,14 @@ def get_denormalizer3(model_dir: str):
     std_so = []
     std_uo = []
     std_vo = []
-    for level in sorted(levels):
-        mean_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_mean.npy")[0]
-        )
+
+    for level in levels:
+        mean_thetao.append(np.load(model_dir + "/" + level + "/thetao_mean.npy")[0])
         mean_so.append(np.load(model_dir + "/" + level + "/so_mean.npy")[0])
         mean_uo.append(np.load(model_dir + "/" + level + "/uo_mean.npy")[0])
         mean_vo.append(np.load(model_dir + "/" + level + "/vo_mean.npy")[0])
 
-        std_thetao.append(
-            np.load(model_dir + "/" + level + "/thetao_std.npy")[0]
-        )
+        std_thetao.append(np.load(model_dir + "/" + level + "/thetao_std.npy")[0])
         std_so.append(np.load(model_dir + "/" + level + "/so_std.npy")[0])
         std_uo.append(np.load(model_dir + "/" + level + "/uo_std.npy")[0])
         std_vo.append(np.load(model_dir + "/" + level + "/vo_std.npy")[0])
@@ -235,6 +235,7 @@ def get_denormalizer3(model_dir: str):
     gstd = np.concatenate([std_thetao, std_so, std_uo, std_vo])
 
     denormalizer = transforms.Normalize(
-        mean=[-m / s for m, s in zip(gmean, gstd)], std=[1 / s for s in gstd]
+        mean=[-m / s for m, s in zip(gmean, gstd)],
+        std=[1 / s for s in gstd],
     )
     return denormalizer
