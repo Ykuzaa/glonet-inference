@@ -56,7 +56,7 @@ def main():
         user_s3_bucket = os.environ.get("AWS_BUCKET_NAME")
 
         if not user_s3_bucket:
-            print("Fatal error: BUCKET_NAME not found in environment.")
+            print("Fatal error: AWS_BUCKET_NAME not found in environment.")
             print("Process cannot determine where to save results.")
             sys.exit(1)
 
