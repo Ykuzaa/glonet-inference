@@ -15,10 +15,10 @@ import sys
 from glonet_forecast import create_forecast
 from model import synchronize_model_locally
 from get_inits import generate_initial_data
+from generate_thumbnails import generate_thumbnail
 
 # Default parameters
 LOCAL_MODEL_DIR = "/tmp/glonet"
-
 
 # Main function: orchestrates the whole inference pipeline
 def main():
@@ -109,6 +109,24 @@ def main():
         initial_file_3_url=in3_url,
     )
 
+    print("--- Generating Thumbnails ---")
+    try: 
+        dynamic_img_path = f"glonet-inference/{FORECAST_DATE}/thumbnails"
+
+        thumbnail_urls = {
+            var: f"s3://{bucket_name}/{dynamic_img_path}/{var}.png"
+            for var in ["zos", "thetao", "so", "uo", "vo"]
+        }
+        generate_thumbnail(
+            bucket_name=bucket_name,
+            forecast_netcdf_file_url=forecast_netcdf_url,
+            thumbnail_file_urls=thumbnail_urls,
+            forecast_dataset=dataset
+        )
+        print("Thumbnails generated successfully.")
+    except Exception as e:
+        print(f"Thumbnail generation failed: {e}")
+        
     try:
         # Final file name
         file_name = f"GLONET_MOI_{forecast_start}_{forecast_end}.nc"
