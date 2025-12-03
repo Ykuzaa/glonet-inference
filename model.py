@@ -33,21 +33,21 @@ def sync_s3_to_local(bucket_name, remote_prefix, local_dir):
     local_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        s3_endpoint_url = os.environ.get("S3_ENDPOINT")
+        s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT")
+        
         if not s3_endpoint_url:
-            raise ValueError("The environment variable S3_ENDPOINT is not set.")
+            raise ValueError("The environment variable AWS_S3_ENDPOINT is not set.")
 
-        s3_endpoint_clean = s3_endpoint_url.replace("https://", "").replace(
-            "http://", ""
-        ).rstrip("/")
-        s3_base_url = f"https://{s3_endpoint_clean}"
+        if s3_endpoint_url and not s3_endpoint_url.startswith("https://"):
+            s3_endpoint_url = "https://" + s3_endpoint_url
+        
         print("Downloading via direct HTTP requests.")
     except Exception as e:
         print(f"S3 endpoint configuration error: {e}")
         raise
 
     print(
-        f"Checking/Downloading: {s3_base_url}/{bucket_name}/{remote_prefix} -> {local_dir}..."
+        f"Checking/Downloading: {s3_endpoint_url}/{bucket_name}/{remote_prefix} -> {local_dir}..."
     )
 
     files_to_download = [
@@ -112,7 +112,7 @@ def sync_s3_to_local(bucket_name, remote_prefix, local_dir):
 
         if not local_file_path.exists():
             try:
-                http_url = f"{s3_base_url}/{bucket_name}/{object_key}"
+                http_url = f"{s3_endpoint_url}/{bucket_name}/{object_key}"
                 print(f"Downloading: {http_url} -> {local_file_path}...")
 
                 response = requests.get(http_url, stream=True)

@@ -12,10 +12,10 @@ import os
 
 # Return the S3 endpoint URL, normalizing input and ensuring HTTPS is used.
 def get_s3_endpoint_url_with_protocol():
-    s3_endpoint_url = os.environ.get("S3_ENDPOINT")
+    s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT")
 
     if not s3_endpoint_url:
-        raise ValueError("The environment variable S3_ENDPOINT is not set.")
+        raise ValueError("The environment variable AWS_S3_ENDPOINT is not set.")
 
     s3_endpoint_url = s3_endpoint_url.replace("https://", "").replace(
         "http://", ""

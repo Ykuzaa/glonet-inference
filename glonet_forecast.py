@@ -369,8 +369,10 @@ def create_forecast(
         secret=os.environ["AWS_SECRET_ACCESS_KEY"],
         token=os.environ["AWS_SESSION_TOKEN"],
     )
-    s3_endpoint_url_base = os.environ.get("S3_ENDPOINT", "https://minio.dive.edito.eu").rstrip("/") + "/"
-
+    s3_endpoint_url_base = os.environ.get("AWS_S3_ENDPOINT", "https://minio.dive.edito.eu").rstrip("/") + "/"
+    if s3_endpoint_url_base and not s3_endpoint_url_base.startswith("https://"):
+            s3_endpoint_url_base = "https://" + s3_endpoint_url_base
+            
     def get_s3_path(url):
         if url.startswith(s3_endpoint_url_base):
             return url[len(s3_endpoint_url_base):].lstrip("/")

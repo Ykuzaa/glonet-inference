@@ -53,7 +53,7 @@ def main():
     else:
         print("No custom S3 path provided. Building default path...")
 
-        user_s3_bucket = os.environ.get("BUCKET_NAME")
+        user_s3_bucket = os.environ.get("AWS_BUCKET_NAME")
 
         if not user_s3_bucket:
             print("Fatal error: BUCKET_NAME not found in environment.")
@@ -130,7 +130,7 @@ def main():
         in_memory_file = io.BytesIO(object_bytes)
 
         # Create S3 client (uses environment variables)
-        s3_endpoint_url = os.environ.get("S3_ENDPOINT")
+        s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT")
         if s3_endpoint_url and not s3_endpoint_url.startswith("https://"):
             s3_endpoint_url = "https://" + s3_endpoint_url
 
