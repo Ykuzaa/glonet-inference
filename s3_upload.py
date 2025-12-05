@@ -7,12 +7,12 @@ deleting and uploading objects.
 """
 
 import boto3
-import os
+import config
 
 
 # Return the S3 endpoint URL, normalizing input and ensuring HTTPS is used.
 def get_s3_endpoint_url_with_protocol():
-    s3_endpoint_url = os.environ.get("AWS_S3_ENDPOINT")
+    s3_endpoint_url = config.AWS_S3_ENDPOINT
 
     if not s3_endpoint_url:
         raise ValueError("The environment variable AWS_S3_ENDPOINT is not set.")
@@ -33,9 +33,9 @@ def get_s3_client():
     return boto3.client(
         "s3",
         endpoint_url=s3_endpoint_url_final,
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-        aws_session_token=os.environ["AWS_SESSION_TOKEN"],
+        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+        aws_session_token=config.AWS_SESSION_TOKEN,
     )
 
 

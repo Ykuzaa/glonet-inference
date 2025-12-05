@@ -12,12 +12,13 @@ import numpy as np
 import gc
 import os
 from s3_upload import save_file_to_s3, get_s3_client, get_s3_endpoint_url_with_protocol
+import config
 from xesmf import Regridder
 from model import synchronize_model_locally
 
 
 # Fetch data for a given date and depth, and regrid using provided weights file.
-def get_data(date, depth, fn):
+def get_data(date, depth, weights_filepath):
     start_datetime = str(date - timedelta(days=1))
     end_datetime = str(date)
     is_surface = abs(depth - 0.49402499198913574) < 0.01
@@ -40,7 +41,7 @@ def get_data(date, depth, fn):
         ]
         mvar = [["uo", "vo"], ["so"], ["thetao"]]
 
-    ds = []
+    dataset = []
     for i in range(0, len(mlist)):
         print(mvar[i])
         data = copernicusmarine.open_dataset(
@@ -54,16 +55,15 @@ def get_data(date, depth, fn):
             maximum_depth=depth,
             start_datetime=start_datetime,
             end_datetime=end_datetime,
-            username=os.environ.get("COPERNICUSMARINE_SERVICE_USERNAME"),
-            password=os.environ.get("COPERNICUSMARINE_SERVICE_PASSWORD"),
+            username=config.COPERNICUSMARINE_SERVICE_USERNAME,
+            password=config.COPERNICUSMARINE_SERVICE_PASSWORD,
         )
-        ds.append(data)
+        dataset.append(data)
 
     print("Merging datasets...")
-    ds = merge(ds)
-    print(ds)
-
-    ds_out = Dataset(
+    dataset = merge(dataset)
+    print(dataset)
+    dataset_out = Dataset(
         {
             "lat": (
                 ["lat"],
@@ -78,94 +78,82 @@ def get_data(date, depth, fn):
 
     print("Loading regridder")
     regridder = Regridder(
-        data, ds_out, "bilinear", weights=fn, reuse_weights=True
+        dataset, dataset_out, "bilinear", weights=weights_filepath, reuse_weights=True
     )
     print("Regridder ready")
-    ds_out = regridder(ds)
+    dataset_out = regridder(dataset)
     print("Done regridding")
 
-    ds_out = ds_out.sel(lat=slice(ds_out.lat[8], ds_out.lat[-1]))
-    del regridder, ds, data
+    dataset_out = dataset_out.sel(lat=slice(dataset_out.lat[8], dataset_out.lat[-1]))
+    del regridder, dataset, data
     gc.collect()
-    return ds_out, is_surface
+    return dataset_out, is_surface
 
 
 # Prepare input for surface group (level 1).
 def glo_in1(model_dir: str, date):
-    inp, is_surface = get_data(date, 0.49402499198913574, f"{model_dir}/xe_weights14/L0.nc")
-    print(inp)
-    return inp, is_surface
+    input_dataset, is_surface = get_data(date, 0.49402499198913574, f"{model_dir}/xe_weights14/L0.nc")
+    print(input_dataset)
+    return input_dataset, is_surface
+
+
+def _get_multidepth_data(model_dir: str, date, depths: list[int]):
+    """Helper to fetch and concatenate data for multiple depths."""
+    dataset_list = []
+    for depth in depths:
+        weights_file = f"{model_dir}/xe_weights14/L{depth}.nc"
+        dataset, _ = get_data(date, depth, weights_file)
+        dataset_list.append(dataset)
+    return concat(dataset_list, dim="depth"), False
 
 
 # Prepare input for intermediate depths (level 2).
 def glo_in2(model_dir: str, date):
-    inp = []
-    inp.append(get_data(date, 50, f"{model_dir}/xe_weights14/L50.nc")[0])
-    inp.append(get_data(date, 100, f"{model_dir}/xe_weights14/L100.nc")[0])
-    inp.append(get_data(date, 150, f"{model_dir}/xe_weights14/L150.nc")[0])
-    inp.append(get_data(date, 222, f"{model_dir}/xe_weights14/L222.nc")[0])
-    inp.append(get_data(date, 318, f"{model_dir}/xe_weights14/L318.nc")[0])
-    inp.append(get_data(date, 380, f"{model_dir}/xe_weights14/L380.nc")[0])
-    inp.append(get_data(date, 450, f"{model_dir}/xe_weights14/L450.nc")[0])
-    inp.append(get_data(date, 540, f"{model_dir}/xe_weights14/L540.nc")[0])
-    inp.append(get_data(date, 640, f"{model_dir}/xe_weights14/L640.nc")[0])
-    inp.append(get_data(date, 763, f"{model_dir}/xe_weights14/L763.nc")[0])
-    inp = concat(inp, dim="depth")
-    return inp, False
+    depths = [50, 100, 150, 222, 318, 380, 450, 540, 640, 763]
+    return _get_multidepth_data(model_dir, date, depths)
 
 
 # Prepare input for deep ocean depths (level 3).
 def glo_in3(model_dir: str, date):
-    inp = []
-    inp.append(get_data(date, 902, f"{model_dir}/xe_weights14/L902.nc")[0])
-    inp.append(get_data(date, 1245, f"{model_dir}/xe_weights14/L1245.nc")[0])
-    inp.append(get_data(date, 1684, f"{model_dir}/xe_weights14/L1684.nc")[0])
-    inp.append(get_data(date, 2225, f"{model_dir}/xe_weights14/L2225.nc")[0])
-    inp.append(get_data(date, 3220, f"{model_dir}/xe_weights14/L3220.nc")[0])
-    inp.append(get_data(date, 3597, f"{model_dir}/xe_weights14/L3597.nc")[0])
-    inp.append(get_data(date, 3992, f"{model_dir}/xe_weights14/L3992.nc")[0])
-    inp.append(get_data(date, 4405, f"{model_dir}/xe_weights14/L4405.nc")[0])
-    inp.append(get_data(date, 4833, f"{model_dir}/xe_weights14/L4833.nc")[0])
-    inp.append(get_data(date, 5274, f"{model_dir}/xe_weights14/L5274.nc")[0])
-    inp = concat(inp, dim="depth")
-    return inp, False
+    depths = [902, 1245, 1684, 2225, 3220, 3597, 3992, 4405, 4833, 5274]
+    return _get_multidepth_data(model_dir, date, depths)
 
 
 # Assemble Dataset with channels (including zos when provided).
-def create_data(ds_out, has_zos):
-    thetao = ds_out["thetao"].data
-    so = ds_out["so"].data
-    uo = ds_out["uo"].data
-    vo = ds_out["vo"].data
+def create_data(dataset_out, has_zos):
+    thetao = dataset_out["thetao"].data
+    so = dataset_out["so"].data
+    uo = dataset_out["uo"].data
+    vo = dataset_out["vo"].data
 
-    if has_zos and "zos" in ds_out:
-        zos = np.expand_dims(ds_out["zos"].data, axis=1)
-        tt = np.concatenate([zos, thetao, so, uo, vo], axis=1)
+    if has_zos and "zos" in dataset_out:
+        zos = np.expand_dims(dataset_out["zos"].data, axis=1)
+        data_tensor = np.concatenate([zos, thetao, so, uo, vo], axis=1)
     else:
-        tt = np.concatenate([thetao, so, uo, vo], axis=1)
+        data_tensor = np.concatenate([thetao, so, uo, vo], axis=1)
 
-    lat = ds_out.lat.data
-    lon = ds_out.lon.data
-    time = ds_out.time.data
+    lat = dataset_out.lat.data
+    lon = dataset_out.lon.data
+    time = dataset_out.time.data
 
-    bb = Dataset(
+    channel_dataset = Dataset(
         {
-            "data": (("time", "ch", "lat", "lon"), tt),
+            "data": (("time", "ch", "lat", "lon"), data_tensor),
         },
         coords={
             "time": ("time", time),
-            "ch": ("ch", range(0, tt.shape[1])),
+            "ch": ("ch", range(0, data_tensor.shape[1])),
             "lat": ("lat", lat),
             "lon": ("lon", lon),
         },
     )
-    return bb
+    return channel_dataset
 
 
 # Create depth data by calling the provided glo_in function.
 def create_depth_data(date: date, glo_in, model_dir: str):
-    dd, is_surface = glo_in(model_dir, date)
-    return create_data(dd, is_surface)
+    depth_dataset, is_surface = glo_in(model_dir, date)
+    return create_data(depth_dataset, is_surface)
 
 
 # Create the init file on S3 if it does not already exist.
