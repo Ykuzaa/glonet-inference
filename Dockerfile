@@ -14,6 +14,7 @@ COPY ./utility.py .
 COPY ./get_inits.py .
 COPY ./s3_upload.py .
 COPY ./generate_thumbnails.py .
+COPY ./config.py .
 COPY ./run_glonet_inference.py .
 
 
