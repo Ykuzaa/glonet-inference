@@ -12,8 +12,9 @@ GLONET accepts custom oceanographic data for forecast initialization. Instead of
 ## Quick Start
 
 ### 1. Access the Service
-Navigate to **Process** → Search **"Glonet-inference"** → Click **Launch**
 
+
+**[Launch GLONET Data Init Process](https://datalab.dive.edito.eu/process-launcher/process-playground/glonet-data-init?name=glonet-data-init&version=0.0.1&s3=region-7e02ff37&resources.requests.cpu=%C2%AB7000m%C2%BB&resources.requests.memory=%C2%AB26Gi%C2%BB)**
 ### 2. Configure Resources
 
 Same requirements as standard GLONET:
