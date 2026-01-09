@@ -29,8 +29,8 @@ Same requirements as standard GLONET:
 | Parameter | Format | Required | Example |
 |-----------|--------|----------|---------|
 | **FORECAST_DATE** | YYYY-MM-DD | Yes | 2025-01-08 |
-| **S3_OUTPUT_FOLDER** | BUCKET/FOLDER | Yes | oidc-emboulaalam/forecasts |
-| **BUCKET_NAME** | bucket-name | Yes | oidc-emboulaalam |
+| **S3_OUTPUT_FOLDER** | BUCKET/FOLDER | Yes | oidc-ykuzaa/forecasts |
+| **BUCKET_NAME** | bucket-name | Yes | oidc-ykuzaa |
 | **INIT_FILE_1_URL** | s3://bucket/path/in1.nc | Yes | s3://bucket/custom-data/in1.nc |
 | **INIT_FILE_2_URL** | s3://bucket/path/in2.nc | Yes | s3://bucket/custom-data/in2.nc |
 | **INIT_FILE_3_URL** | s3://bucket/path/in3.nc | Yes | s3://bucket/custom-data/in3.nc |
