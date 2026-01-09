@@ -11,8 +11,7 @@ GLONET On-Demand enables research partners to generate custom 10-day ocean forec
 ## Quick Start
 
 ### 1. Access the Service
-Navigate to **Process** → Search **"Glonet-inference"** → Click **Launch**
-
+**[Launch GLONET-Inference](https://datalab.dive.edito.eu/process-launcher/process-playground/glonet-inference?name=glonet-inference&version=0.0.9&s3=region-7e02ff37&resources.requests.cpu=%C2%AB7000m%C2%BB&resources.requests.memory=%C2%AB25Gi%C2%BB)**
 ### 2. Configure Resources ⚠️
 
 **Critical:** Set minimum resource allocation to avoid crashes.
